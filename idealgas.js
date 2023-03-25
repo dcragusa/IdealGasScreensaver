@@ -4,6 +4,8 @@ const sizeFactor = 25;
 const speedFactor = 4;
 const ballColour = "rgb(80, 80, 80)";
 
+const twoPi = 2 * Math.PI
+
 class Vector {
 
   constructor(x, y) {
@@ -74,7 +76,8 @@ class Ball {
 
   isColliding(ball) {
     // for two balls to be colliding, the distance between their centres must be less than the sum of their radii
-    return Math.sqrt((this.position.x - ball.position.x)**2 + (this.position.y - ball.position.y)**2) < (this.r + ball.r);
+    // avoid expensive square root by squaring both sides instead
+    return (this.position.x - ball.position.x)**2 + (this.position.y - ball.position.y)**2 < (this.r + ball.r)**2;
   }
 
   checkBallCollision(ball) {
@@ -149,10 +152,17 @@ class Box {
     }
   }
 
-  drawBall(ball) {
+  drawBalls() {
     this.ctx.beginPath();
-    this.ctx.arc(ball.position.x, ball.position.y, ball.r, 0, 2 * Math.PI);
     this.ctx.fillStyle = ballColour;
+    for (const ball of this.balls) {
+      // arc() starts at the centre, goes out to the circumference and draws a circle.
+      // By starting at the circumference directly, we not only optimise the draw call
+      // but also avoid canvas assuming an open path and filling in everything in sight.
+      this.ctx.moveTo(ball.position.x + ball.r, ball.position.y);
+      this.ctx.arc(ball.position.x, ball.position.y, ball.r, 0, twoPi);
+    }
+    this.ctx.stroke();
     this.ctx.fill();
   }
 
@@ -165,8 +175,8 @@ class Box {
       for (const other_ball of this.balls.slice(i+1)) {
         ball.checkBallCollision(other_ball);
       }
-      this.drawBall(ball);
     }
+    this.drawBalls();
   }
 
 }
@@ -174,5 +184,5 @@ class Box {
 window.addEventListener("load", async function () {
   let box = new Box();
   window.addEventListener("resize", box.setup.bind(box), false);
-  window.setInterval(box.drawFrame.bind(box), 5);
+  window.setInterval(box.drawFrame.bind(box), 10);
 });
